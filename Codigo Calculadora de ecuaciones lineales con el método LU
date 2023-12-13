@@ -1,0 +1,105 @@
+import numpy as np
+import tkinter as tk
+from tkinter import ttk
+from fractions import Fraction
+
+def factorizacion_lu(A):
+    n = len(A)
+    L = np.eye(n)
+    U = np.zeros((n, n))
+
+    for k in range(n):
+        U[k, k:] = A[k, k:] - L[k, :k] @ U[:k, k:]
+        L[(k+1):, k] = (A[(k+1):, k] - L[(k+1):, :k] @ U[:k, k]) / U[k, k]
+
+    return L, U
+
+def resolver_sistema_lu(L, U, b):
+    n = len(b)
+    y = np.zeros(n)
+
+    for i in range(n):
+        y[i] = b[i] - L[i, :i] @ y[:i]
+
+    x = np.zeros(n)
+
+    for i in range(n - 1, -1, -1):
+        x[i] = (y[i] - U[i, (i+1):] @ x[(i+1):]) / U[i, i]
+
+    return x
+
+def fraccionar(matriz):
+    matriz_fraccionada = []
+    for fila in matriz:
+        fila_fraccionada = [Fraction(elemento).limit_denominator() for elemento in fila]
+        matriz_fraccionada.append(fila_fraccionada)
+    return matriz_fraccionada
+
+def limpiar_entradas():
+    for i in range(3):
+        for j in range(3):
+            entry_A[i][j].delete(0, tk.END)
+        entry_b[i].delete(0, tk.END)
+
+def mostrar_matriz_fraccionada(matriz, row, column):
+    # Formatear cada fila con al menos dos espacios entre los elementos
+    texto_matriz = '\n'.join(['[' + '  '.join(map(str, fila)) + ']' for fila in matriz])
+    ttk.Label(ventana_resultados, text=texto_matriz, justify='center').grid(row=row, column=column, padx=10, pady=5)
+
+def resolver_y_mostrar_resultados():
+    filas_A = len(entry_A)
+    columnas_A = len(entry_A[0])
+    
+    matriz_A = [[float(entry_A[i][j].get()) for j in range(columnas_A)] for i in range(filas_A)]
+    vector_b = [float(entry_b[i].get()) for i in range(filas_A)]
+
+    A = np.array(matriz_A)
+    b = np.array(vector_b)
+
+    L, U = factorizacion_lu(A)
+    solucion = resolver_sistema_lu(L, U, b)
+
+    matriz_L_fraccionada = fraccionar(L)
+    matriz_U_fraccionada = fraccionar(U)
+    respuestas_fraccionadas = fraccionar([solucion])
+
+    global ventana_resultados
+    ventana_resultados = tk.Toplevel(root)
+    ventana_resultados.title("Resultados - Método de Factorización LU")
+    ventana_resultados.configure(bg='lightblue')
+
+    ttk.Label(ventana_resultados, text="Matriz L:").grid(row=0, column=0, padx=10, pady=5)
+    ttk.Label(ventana_resultados, text="Matriz U:").grid(row=1, column=0, padx=10, pady=5)
+    ttk.Label(ventana_resultados, text="Solución del sistema:").grid(row=2, column=0, padx=10, pady=5)
+
+    mostrar_matriz_fraccionada(matriz_L_fraccionada, 0, 1)
+    mostrar_matriz_fraccionada(matriz_U_fraccionada, 1, 1)
+    mostrar_matriz_fraccionada(respuestas_fraccionadas, 2, 1)
+
+# Crear la ventana principal
+root = tk.Tk()
+root.title("Calculadora de Ecuaciones Lineales - Método de Factorización LU")
+root.configure(bg='lightblue')
+
+# Añadir la dedicatoria
+ttk.Label(root, text="Curso de álgebra Lineal", font=("Helvetica", 12, "italic"), foreground="blue").grid(row=7, column=0, columnspan=4, pady=5)
+
+ttk.Label(root, text="Ingrese las ecuaciones:").grid(row=0, column=0, padx=10, pady=5)
+ttk.Label(root, text="").grid(row=1, column=0, padx=10, pady=5)
+
+entry_A = [[ttk.Entry(root) for j in range(3)] for i in range(3)]
+entry_b = [ttk.Entry(root) for i in range(3)]
+
+for i in range(3):
+    for j in range(3):
+        entry_A[i][j].grid(row=i, column=j + 1, padx=5, pady=5)
+
+    entry_b[i].grid(row=i + 3, column=1, padx=5, pady=5)
+
+boton_resolver = ttk.Button(root, text="Resolver", command=resolver_y_mostrar_resultados)
+boton_resolver.grid(row=6, column=0, columnspan=2, pady=10)
+
+boton_limpiar = ttk.Button(root, text="Limpiar", command=limpiar_entradas)
+boton_limpiar.grid(row=6, column=2, columnspan=2, pady=10)
+
+root.mainloop()
